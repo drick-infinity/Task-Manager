@@ -1,10 +1,9 @@
-import Login from "./pages/Login"
+import {Outlet} from 'react-router-dom';
 
-function App() {
-
+const App = () => {
   return (
     <>
-      <Login/>
+    <Outlet/>
     </>
   )
 }
