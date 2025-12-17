@@ -11,7 +11,7 @@ export const useLogout = () => {
     try {
       const res = await fetch(`${backendUrl}/api/v1/logout`, {
         method: "POST",
-        credentials: "include", // send cookie
+        credentials: "include", 
       });
 
       if (!res.ok) {
