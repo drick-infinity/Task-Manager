@@ -1,7 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useLogout } from "../../hooks/useLogout";
-const Sidebar: React.FC = () => {
+const Sidebar= () => {
   const location = useLocation();
 
   const linkClasses =

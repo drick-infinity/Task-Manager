@@ -2,40 +2,31 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 export interface AuthRequest extends Request {
-  userId?: number;
+  userId?: number; // correctly typed as number
 }
 
 export const authMiddleware = (
-  req: Request,
+  req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
-  const token = req.cookies.token;
-
+  // Get token from cookies or Authorization header
+  const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+  const userId = req.cookies.userId;
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: "Not logged in",
-    });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number | string };
+    req.userId = Number(decoded.id);
 
-    const userId = Number(decoded.id);
-    if (isNaN(userId)) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token",
-      });
+    if (isNaN(req.userId)) {
+      return res.status(401).json({ success: false, message: "Invalid token ID" });
     }
 
-    (req as AuthRequest).userId = userId;
     next();
-  } catch {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid or expired token",
-    });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
 };

@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -19,4 +18,38 @@ model User{
  email String @unique
  password String
  createdAt DateTime @default(now())
+ createdTasks  Task[] @relation("CreatedTasks")
+ assignedTasks Task[] @relation("AssignedTasks")
+}
+
+enum Priority {
+  Low
+  Medium
+  High
+}
+
+enum Status {
+  ToDo
+  InProgress
+  Review
+  Completed
+}
+
+model Task {
+  id            Int      @id @default(autoincrement())
+  title         String   @db.VarChar(100)
+  description   String?
+  dueDate       DateTime
+  priority      Priority
+  status        Status   @default(ToDo)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  creatorId     Int
+  assignedToId  Int
+
+  creator       User @relation("CreatedTasks", fields: [creatorId], references: [id])
+  assignedTo    User @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  @@index([creatorId])
+  @@index([assignedToId])
 }

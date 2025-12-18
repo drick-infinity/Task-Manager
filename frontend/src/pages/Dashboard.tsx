@@ -1,75 +1,54 @@
-import { Button } from "../components/ui/Button";
+import { useTasks } from "../hooks/useTask";
+import { useUsers } from "../hooks/useUsers";
 
 const Dashboard = () => {
+  const { tasks, isLoading: tasksLoading, isError: tasksError } = useTasks();
+  const { usersById, isLoading: usersLoading, isError: usersError } = useUsers();
+
+  // Loading and error handling
+  if (tasksLoading || usersLoading) return <p>Loading tasks...</p>;
+  if (tasksError || usersError) return <p>Failed to load tasks</p>;
+
   return (
-    <>
-      <div className="bg-white px-10 py-6 shadow-md rounded-md">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-gray-600">
-          <div className="bg-[#CADCFC] p-4 rounded-md shadow">Total Tasks</div>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
 
-          <div className="bg-[#E6E6FA] p-4 rounded-md shadow">
-            Pending Tasks
-          </div>
-
-          <div className="bg-[#CCE7C9] p-4 rounded-md shadow">In Progress</div>
-
-          <div className="bg-[#00B4D8] p-4 rounded-md shadow">
-            Completed Tasks
-          </div>
+      {tasks.length === 0 ? (
+        <p>No tasks found.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200 rounded-md">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="py-2 px-4 border-b text-left">Title</th>
+                <th className="py-2 px-4 border-b text-left">Description</th>
+                <th className="py-2 px-4 border-b text-left">Due Date</th>
+                <th className="py-2 px-4 border-b text-left">Priority</th>
+                <th className="py-2 px-4 border-b text-left">Status</th>
+                <th className="py-2 px-4 border-b text-left">Assigned To</th>
+              </tr>
+            </thead>
+            <tbody>
+            {tasks.map((task: any) => (
+  <tr key={task.id} className="hover:bg-gray-50">
+    <td className="py-2 px-4 border-b">{task.title}</td>
+    <td className="py-2 px-4 border-b">{task.description}</td>
+    <td className="py-2 px-4 border-b">
+      {new Date(task.dueDate).toLocaleString()}
+    </td>
+    <td className="py-2 px-4 border-b">{task.priority}</td>
+    <td className="py-2 px-4 border-b">{task.status}</td>
+    <td className="py-2 px-4 border-b">
+      {/* Check if assigned user exists before trying to access the name */}
+      {usersById[task.assignedToId] ? usersById[task.assignedToId].name : "User not found"}
+    </td>
+  </tr>
+))}
+            </tbody>
+          </table>
         </div>
-      </div>
-
-      <div className="relative mt-6 bg-white shadow-lg p-4 rounded-md">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full p-4 rounded-md">
-          <div className="mb-2 sm:mb-0">
-            <div className="font-semibold text-lg">Recent Tasks</div>
-          </div>
-          <div className="ml-0 sm:ml-4">
-            <Button>See all</Button>
-          </div>
-        </div>
-
-        <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 mt-6 bg-gray-100 p-2 font-semibold rounded-t-md">
-          <div>Name</div>
-          <div>Priority</div>
-          <div>Status</div>
-          <div>Created On</div>
-        </div>
-
-        <div className="mt-2 space-y-2">
-          {[
-            {
-              name: "Implement dashboard layout",
-              priority: "High",
-              status: "In Progress",
-              created: "2025-12-17",
-            },
-            {
-              name: "Fix sidebar responsive issue",
-              priority: "Medium",
-              status: "Pending",
-              created: "2025-12-16",
-            },
-            {
-              name: "Add Recent Tasks table",
-              priority: "Low",
-              status: "Completed",
-              created: "2025-12-15",
-            },
-          ].map((task, idx) => (
-            <div
-              key={idx}
-              className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr_1fr] gap-4 p-2 bg-white rounded-md shadow hover:bg-gray-50 transition"
-            >
-              <div className="font-medium">{task.name}</div>
-              <div>{task.priority}</div>
-              <div>{task.status}</div>
-              <div>{task.created}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
+      )}
+    </div>
   );
 };
 

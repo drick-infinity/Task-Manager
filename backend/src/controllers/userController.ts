@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Response ,Request} from "express";
 import prisma from "../config/prisma";
 import { AuthRequest } from "../middleware/authMiddleware";
 
@@ -25,3 +25,12 @@ export const getUser = async (req: AuthRequest, res: Response) => {
     });
   };
   
+  export const getall = async(req:Request,res:Response)=>{
+    try {
+      const users = await prisma.user.findMany(); // Fetch all users from the database
+      res.json({ success: true, data: users });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch users' });
+    }
+  }
