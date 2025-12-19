@@ -1,30 +1,33 @@
-// hooks/useUsers.ts
-import useSWR from 'swr';
+import useSWR from "swr";
 
-const USERS_URL = 'http://localhost:5000/api/users/allusers'; // Replace with your actual users API endpoint
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const USERS_URL = "http://localhost:5000/api/users/allusers";
 
 const fetcher = async (url: string) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
-
-  if (!res.ok) throw new Error('Failed to fetch users');
-  return res.json(); // Assuming the API returns { success: true, data: [...users] }
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json() as Promise<{ success: boolean; data: User[] }>;
 };
 
 export const useUsers = () => {
-  const { data, error } = useSWR(USERS_URL, fetcher);
+  const { data, error } = useSWR<{ success: boolean; data: User[] }>(USERS_URL, fetcher);
 
-  // Check if 'data' exists and is an array before trying to reduce
-  const usersById = Array.isArray(data?.data)
-    ? data.data.reduce((acc: Record<number, any>, user: any) => {
-        acc[user.id] = user; // Map the user object by their id
+  const usersById: Record<number, User> = Array.isArray(data?.data)
+    ? data.data.reduce((acc: Record<number, User>, user: User) => {
+        acc[user.id] = user;
         return acc;
       }, {})
-    : {}; // Return an empty object if data is not an array
+    : {};
 
   return {
     usersById,

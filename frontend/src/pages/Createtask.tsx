@@ -3,12 +3,40 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { taskSchema, TaskFormData } from "../schema/taskSchema";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTasks, mutate as mutateTasks } from "../hooks/useTask";
 import { useNavigate } from "react-router-dom";
 
+type User = {
+  id: number;
+  name: string;
+};
+
 const CreateTask = () => {
   const navigate = useNavigate();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/users/allusers");
+        const result = await response.json();
+        if (response.ok && Array.isArray(result.data)) {
+          setUsers(result.data);
+        } else {
+          setUsers([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch users", err);
+        setUsers([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const {
     register,
@@ -23,18 +51,27 @@ const CreateTask = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  if (isLoading) return <p>Loading tasks...</p>;
+  if (isLoading || loadingUsers) return <p>Loading...</p>;
   if (isError) return <p>Failed to load tasks</p>;
 
   const onSubmit = async (data: TaskFormData) => {
- 
     setLoading(true);
     setErrorMsg("");
 
+    const assignedUser = users.find(
+      (user) => user.name === data.assignedToName
+    );
+
+    if (!assignedUser) {
+      setErrorMsg("Assigned user not found");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       ...data,
-      assignedToId: Number(data.assignedToId), // convert to number for backend
-      dueDate: new Date(data.dueDate).toISOString(), // send ISO string
+      assignedToId: assignedUser.id,
+      dueDate: new Date(data.dueDate).toISOString(),
     };
 
     try {
@@ -48,19 +85,16 @@ const CreateTask = () => {
       });
 
       const result = await res.json();
-      console.log("Response:", res.ok, result);
 
       if (!res.ok || !result.success) {
         setErrorMsg(result?.message || "Failed to create task");
-        console.error(result?.message);
       } else {
         reset();
-        await mutateTasks(); // refresh SWR tasks cache
+        await mutateTasks();
         navigate("/dashboard");
       }
     } catch (err: any) {
       setErrorMsg(err?.message || "Something went wrong");
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -75,38 +109,33 @@ const CreateTask = () => {
 
       {errorMsg && <p className="text-red-500">{errorMsg}</p>}
 
-      {/* Title */}
       <div>
         <label className="block font-medium mb-1">Title</label>
         <Input type="text" {...register("title")} />
         {errors.title && (
-          <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
+          <p className="text-red-500 text-sm">{errors.title.message}</p>
         )}
       </div>
 
-      {/* Description */}
       <div>
         <label className="block font-medium mb-1">Description</label>
         <textarea
           {...register("description")}
           className="w-full p-2 border rounded-md"
-          rows={4}
         />
         {errors.description && (
-          <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+          <p className="text-red-500 text-sm">{errors.description.message}</p>
         )}
       </div>
 
-      {/* Due Date */}
       <div>
         <label className="block font-medium mb-1">Due Date</label>
         <Input type="datetime-local" {...register("dueDate")} />
         {errors.dueDate && (
-          <p className="text-red-500 text-sm mt-1">{errors.dueDate.message}</p>
+          <p className="text-red-500 text-sm">{errors.dueDate.message}</p>
         )}
       </div>
 
-      {/* Priority */}
       <div>
         <label className="block font-medium mb-1">Priority</label>
         <select {...register("priority")} className="w-full p-2 border rounded-md">
@@ -116,11 +145,10 @@ const CreateTask = () => {
           <option value="High">High</option>
         </select>
         {errors.priority && (
-          <p className="text-red-500 text-sm mt-1">{errors.priority.message}</p>
+          <p className="text-red-500 text-sm">{errors.priority.message}</p>
         )}
       </div>
 
-      {/* Status */}
       <div>
         <label className="block font-medium mb-1">Status</label>
         <select {...register("status")} className="w-full p-2 border rounded-md">
@@ -131,24 +159,34 @@ const CreateTask = () => {
           <option value="Completed">Completed</option>
         </select>
         {errors.status && (
-          <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
+          <p className="text-red-500 text-sm">{errors.status.message}</p>
         )}
       </div>
 
-      {/* Assigned To ID */}
       <div>
-        <label className="block font-medium mb-1">Assigned To ID</label>
-        <Input type="number" {...register("assignedToId")} />
-        {errors.assignedToId && (
-          <p className="text-red-500 text-sm mt-1">{errors.assignedToId.message}</p>
+        <label className="block font-medium mb-1">Assigned To</label>
+        <select
+          {...register("assignedToName")}
+          className="w-full p-2 border rounded-md"
+        >
+          <option value="">Select User</option>
+
+          {users.map((user) => (
+            <option key={user.id} value={user.name}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+        {errors.assignedToName && (
+          <p className="text-red-500 text-sm">
+            {errors.assignedToName.message}
+          </p>
         )}
       </div>
 
-      <div className="pt-2">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Task"}
-        </Button>
-      </div>
+      <Button type="submit" disabled={loading}>
+        {loading ? "Creating..." : "Create Task"}
+      </Button>
     </form>
   );
 };

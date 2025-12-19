@@ -72,6 +72,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
   }
 };
 
+
+
 export const getTasks = async (req: AuthRequest, res: Response) => {
   const userId = Number(req.userId);
 
@@ -90,8 +92,6 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-
-    // Prevent caching
     res.setHeader("Cache-Control", "no-store");
 
     return res.status(200).json({
@@ -120,5 +120,83 @@ export const getAssignedTasks = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Failed to fetch assigned tasks" });
+  }
+};
+
+export const deleteTask = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  if (!id || isNaN(Number(id))) {
+    return res.status(400).json({ success: false, message: "Invalid task ID" });
+  }
+
+  try {
+    const task = await prisma.task.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!task) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    if (task.creatorId !== req.userId) {
+      return res.status(403).json({ success: false, message: "Forbidden: Not the task creator" });
+    }
+
+    await prisma.task.delete({ where: { id: Number(id) } });
+
+    return res.status(200).json({ success: true, message: "Task deleted successfully" });
+  } catch (err: any) {
+    console.error("Delete task error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Internal server error" });
+  }
+};
+
+export const updateTask = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { title, description, dueDate, priority, status, assignedToId } = req.body ?? {};
+
+  if (!title || !dueDate || !priority || assignedToId == null) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  if (!PRIORITY_ENUM.includes(priority)) {
+    return res.status(400).json({ success: false, message: `Invalid priority. Allowed: ${PRIORITY_ENUM.join(", ")}` });
+  }
+
+  if (!STATUS_ENUM.includes(status)) {
+    return res.status(400).json({ success: false, message: `Invalid status. Allowed: ${STATUS_ENUM.join(", ")}` });
+  }
+
+  const parsedDate = new Date(dueDate);
+  if (isNaN(parsedDate.getTime())) {
+    return res.status(400).json({ success: false, message: "Invalid due date" });
+  }
+
+  try {
+    const task = await prisma.task.findUnique({ where: { id: Number(id) } });
+    if (!task) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    if (task.creatorId !== Number(req.userId) && task.assignedToId !== Number(req.userId)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const updatedTask = await prisma.task.update({
+      where: { id: Number(id) },
+      data: {
+        title,
+        description,
+        dueDate: parsedDate,
+        priority,
+        status,
+        assignedToId: Number(assignedToId),
+      },
+    });
+
+    return res.status(200).json({ success: true, message: "Task updated successfully", data: updatedTask });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Internal server error" });
   }
 };
