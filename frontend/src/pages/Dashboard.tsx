@@ -6,7 +6,6 @@ import { Button } from "../components/ui/Button";
 type Priority = "Low" | "Medium" | "High" | "Urgent";
 type Status = "ToDo" | "InProgress" | "Review" | "Completed";
 
-
 interface Task {
   id: number;
   title: string;
@@ -33,11 +32,36 @@ const Dashboard = () => {
     assignedToId: "",
   });
 
+  // Filtering and sorting state
+  const [filterPriority, setFilterPriority] = useState<Priority | "">("");
+  const [filterStatus, setFilterStatus] = useState<Status | "">("");
+  const [sortByDueDate, setSortByDueDate] = useState<"asc" | "desc">("asc");
+
   const { tasks, isLoading: tasksLoading, isError: tasksError } = useTasks();
   const { usersById, isLoading: usersLoading, isError: usersError } = useUsers();
 
   if (tasksLoading || usersLoading) return <p>Loading tasks...</p>;
   if (tasksError || usersError) return <p>Failed to load tasks</p>;
+
+  // Filtered and sorted tasks
+  let filteredTasks = tasks;
+
+  // Filter by priority
+  if (filterPriority) {
+    filteredTasks = filteredTasks.filter((task: { priority: string; }) => task.priority === filterPriority);
+  }
+
+  // Filter by status
+  if (filterStatus) {
+    filteredTasks = filteredTasks.filter((task: { status: string; }) => task.status === filterStatus);
+  }
+
+  // Sort by due date
+  filteredTasks.sort((a: { dueDate: string | number | Date; }, b: { dueDate: string | number | Date; }) => {
+    const dateA = new Date(a.dueDate).getTime();
+    const dateB = new Date(b.dueDate).getTime();
+    return sortByDueDate === "asc" ? dateA - dateB : dateB - dateA;
+  });
 
   const handleEditClick = (task: Task) => {
     setEditingTask(task);
@@ -119,7 +143,44 @@ const Dashboard = () => {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
 
-      {tasks.length === 0 ? (
+      {/* Filter Controls */}
+      <div className="flex space-x-4 mb-4">
+        <select
+          value={filterPriority}
+          onChange={(e) => setFilterPriority(e.target.value as Priority)}
+          className="px-2 py-1 border"
+        >
+          <option value="">All Priorities</option>
+          {PRIORITY_OPTIONS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as Status)}
+          className="px-2 py-1 border"
+        >
+          <option value="">All Statuses</option>
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        {/* Sort Button */}
+        <button
+          onClick={() => setSortByDueDate(sortByDueDate === "asc" ? "desc" : "asc")}
+          className="px-4 py-1 border"
+        >
+          Sort by Due Date ({sortByDueDate === "asc" ? "Ascending" : "Descending"})
+        </button>
+      </div>
+
+      {filteredTasks.length === 0 ? (
         <p>No tasks found.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -136,7 +197,7 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {tasks.map((task: Task) => (
+              {filteredTasks.map((task: Task) => (
                 <tr key={task.id}>
                   <td className="py-2 px-4 border-b">{task.title}</td>
                   <td className="py-2 px-4 border-b">{task.description}</td>
@@ -173,78 +234,77 @@ const Dashboard = () => {
       )}
 
       {editingTask && (
-  <div className="fixed inset-0 backdrop-blur-md flex justify-center items-center z-50">
-    <div className="bg-white p-6 rounded shadow w-96">
-      <h2 className="text-xl font-bold mb-4">Edit Task</h2>
-      <input
-        name="title"
-        value={editFormData.title}
-        onChange={handleChange}
-        placeholder="Title"
-        className="w-full mb-2 border px-2 py-1"
-      />
-      <textarea
-        name="description"
-        value={editFormData.description}
-        onChange={handleChange}
-        placeholder="Description"
-        className="w-full mb-2 border px-2 py-1"
-      />
-      <input
-        type="datetime-local"
-        name="dueDate"
-        value={editFormData.dueDate}
-        onChange={handleChange}
-        className="w-full mb-2 border px-2 py-1"
-      />
-      <select
-        name="priority"
-        value={editFormData.priority}
-        onChange={handleChange}
-        className="w-full mb-2 border px-2 py-1"
-      >
-        {PRIORITY_OPTIONS.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
-      <select
-        name="status"
-        value={editFormData.status}
-        onChange={handleChange}
-        className="w-full mb-2 border px-2 py-1"
-      >
-        {STATUS_OPTIONS.map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
-        ))}
-      </select>
-      <select
-        name="assignedToId"
-        value={editFormData.assignedToId}
-        onChange={handleChange}
-        className="w-full mb-2 border px-2 py-1"
-      >
-        {Object.values(usersById).map((user) => (
-          <option key={user.id} value={user.id}>
-            {user.name}
-          </option>
-        ))}
-      </select>
-      <div className="flex justify-end space-x-2 mt-2">
-        <Button onClick={() => setEditingTask(null)} className="px-3 py-1">
-          Cancel
-        </Button>
-        <Button onClick={handleUpdate} className="px-3 py-1">
-          Save
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
-
+        <div className="fixed inset-0 backdrop-blur-md flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded shadow w-96">
+            <h2 className="text-xl font-bold mb-4">Edit Task</h2>
+            <input
+              name="title"
+              value={editFormData.title}
+              onChange={handleChange}
+              placeholder="Title"
+              className="w-full mb-2 border px-2 py-1"
+            />
+            <textarea
+              name="description"
+              value={editFormData.description}
+              onChange={handleChange}
+              placeholder="Description"
+              className="w-full mb-2 border px-2 py-1"
+            />
+            <input
+              type="datetime-local"
+              name="dueDate"
+              value={editFormData.dueDate}
+              onChange={handleChange}
+              className="w-full mb-2 border px-2 py-1"
+            />
+            <select
+              name="priority"
+              value={editFormData.priority}
+              onChange={handleChange}
+              className="w-full mb-2 border px-2 py-1"
+            >
+              {PRIORITY_OPTIONS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <select
+              name="status"
+              value={editFormData.status}
+              onChange={handleChange}
+              className="w-full mb-2 border px-2 py-1"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <select
+              name="assignedToId"
+              value={editFormData.assignedToId}
+              onChange={handleChange}
+              className="w-full mb-2 border px-2 py-1"
+            >
+              {Object.values(usersById).map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex justify-end space-x-2 mt-2">
+              <Button onClick={() => setEditingTask(null)} className="px-3 py-1">
+                Cancel
+              </Button>
+              <Button onClick={handleUpdate} className="px-3 py-1">
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
